@@ -1,0 +1,7 @@
+{
+  "name": "smart-hospital-management", "version": "1.0.0", "private": true,
+  "type": "module", "description": "Java, Node.js, MySQL and JavaScript hospital workflow portfolio project",
+  "scripts": {"start": "node backend/server.js", "demo": "node backend/demo.js", "test": "node --test tests/*.test.js"},
+  "engines": {"node": ">=22"},
+  "dependencies": {"mysql2": "^3.14.0"}
+}

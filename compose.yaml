@@ -1,0 +1,37 @@
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: hospital
+      MYSQL_USER: hospital
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+    volumes:
+      - hospital_data:/var/lib/mysql
+      - ./db/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$${MYSQL_PASSWORD}" mysql -h 127.0.0.1 -u hospital -D hospital -e "SELECT 1 FROM doctors LIMIT 1"']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  scheduler:
+    build: ./scheduler
+  app:
+    build: .
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: hospital
+      MYSQL_USER: hospital
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      SCHEDULER_URL: http://scheduler:8080
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+      scheduler:
+        condition: service_started
+volumes:
+  hospital_data:

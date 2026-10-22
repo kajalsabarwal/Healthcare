@@ -1,0 +1,38 @@
+name: Validate hospital project
+on: [push, pull_request]
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: javac scheduler/Scheduler.java scheduler/SchedulerTest.java && java -cp scheduler SchedulerTest
+  full-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Configure ephemeral test credentials
+        run: |
+          cp .env.example .env
+      - run: docker compose up --build -d
+      - name: Wait for application
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3000/api/health; then exit 0; fi
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+      - run: node tests/integration.mjs
+      - if: always()
+        run: docker compose logs && docker compose down -v
