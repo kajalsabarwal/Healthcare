@@ -11,12 +11,15 @@ This is a separate project from the Expense and Budget Analysis repository. All 
 - Patient registration, searchable directory, and paginated medical history.
 - Add medical records directly from Patients: disease/diagnosis, treatment or care plan, recovery status, and clinical notes. Historical entries do not require an appointment. Recovery is recorded by staff, never inferred by the app.
 - Doctor registration, duty changes, and live availability updates using Server-Sent Events (SSE).
+- In Care team, use **Finish visit & mark available** on a busy doctor's card to complete the active visit and enable calling the next patient. The card identifies the current patient and also links to visit record entry.
 - Appointment queues: `Queue`/`ArrayDeque` for normal visits and `PriorityQueue` for staff-assigned emergency visits.
 - Deterministic ordering: emergency priority 3 before 2 before 1, then normal visits; equal priority uses arrival time and appointment ID.
 - Java `HashMap<Long, Boolean>` availability cache rebuilt from database snapshots.
 - Appointment state transitions, consultation notes, integer-paise billing, and payment-status recording.
 - Parameterized MySQL queries, indexed patient-history retrieval, doctor-row locks, and unique constraints for active visits.
 - Administrator login, signed HttpOnly session cookies, CSRF validation, same-origin writes, input validation, and bounded request bodies.
+- Staff directory with editable names and morning/night shift assignments. Harmeet and Milli start on mornings; Vansh starts on both shifts.
+- Forgot password flow for configured SMS/email contacts, using Twilio Verify. Delivery credentials must be configured privately before codes can be sent. Successful resets store a salted password hash and invalidate older sessions.
 
 ## Quick start: full Java + Node.js + MySQL stack
 
@@ -45,6 +48,8 @@ docker compose down
 
 For an existing MySQL installation, apply `db/003_patient_records.sql` once before using this version. New databases already include the new fields. The migration retains existing diagnoses and notes, adds treatment/recovery fields, and allows standalone records without an appointment. The Docker init script does not migrate existing volumes automatically.
 
+Then apply `db/004_staff_and_recovery.sql` once for staff and persistent reset credentials. Fresh databases include all current tables in `001_schema.sql`.
+
 Node.js 22+ is enough for the dependency-free local demo:
 
 ```bash
@@ -52,6 +57,14 @@ npm run demo
 ```
 
 Open **http://127.0.0.1:3000**. Login: **admin / demo-hospital**. This mode binds only to localhost, uses an in-memory store and a JavaScript ordering equivalent, and loses changes on restart. It does **not** demonstrate Java execution or database persistence. The Docker stack runs the actual Java/MySQL implementation.
+
+Optional local persistence: set `DEMO_DATA_FILE` to a private JSON path outside the repository. The demo saves data and reset password hashes there after successful changes and restores them on startup. Without it, the demo remains ephemeral. Never publish that file. A reset password overrides the initial demo password when a saved credential exists.
+
+## Password recovery
+
+Click **Forgot password?**, select SMS or email, enter the registered contact and username, then enter the delivered verification code and a new password of at least 12 characters. See [private recovery setup](docs/recovery.md). The registered phone is displayed in the recovery screen when configured; the email display is masked. No user's personal contact is hardcoded in the repository.
+
+If the delivery provider is not configured, the form clearly states that sending codes is unavailable. It never invents or displays a usable verification code. The SMS/email delivery integration is tested with mocks; actual delivery requires the account owner to configure the provider.
 
 ## Try a complete workflow
 

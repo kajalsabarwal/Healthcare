@@ -12,8 +12,12 @@ assert.equal((await call('/records',{appointment_id:next.body.id,diagnosis:'Inte
 assert.equal((await call('/patients/2/history')).body.records[0].diagnosis,'Integration demo');
 assert.equal((await call('/bills',{appointment_id:next.body.id,amount_paise:50000})).status,201);
 assert.equal((await call(`/appointments/${next.body.id}/complete`,{})).status,200);
+assert.equal((await call('/state')).body.doctors.find(d=>d.id===1).available,true);
 console.log('Java + Node.js + MySQL integration checks passed');
 const record={diagnosis:'Synthetic historical condition',treatment:'Demo care plan',recovery_status:'recovered',notes:'Synthetic recovery note'};
 assert.equal((await call('/patients/4/history',record)).status,201);
 const history=await call('/patients/4/history');assert.equal(history.body.records[0].treatment,record.treatment);assert.equal(history.body.records[0].recovery_status,'recovered');assert.equal(history.body.records[0].appointment_id,null);
 console.log('Standalone disease and treatment records persist in MySQL');
+const staff=await call('/staff');assert.equal(staff.status,200);const vansh=staff.body.items.find(s=>s.name==='Vansh');assert.equal(vansh.morning_shift,1);assert.equal(vansh.night_shift,1);
+const edited=await fetch(base+'/api/staff/'+vansh.id,{method:'PATCH',headers:{Cookie:cookie,'X-CSRF-Token':user.csrf,'Content-Type':'application/json'},body:JSON.stringify({name:'Vansh Demo',morning_shift:true,night_shift:true})});assert.equal(edited.status,200);assert.equal((await edited.json()).name,'Vansh Demo');
+console.log('Staff shifts and name edits persist in MySQL');

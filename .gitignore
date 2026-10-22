@@ -1,5 +1,7 @@
 node_modules/
 .env
+*.local.env
+*.private.json
 *.class
 coverage/
 .DS_Store

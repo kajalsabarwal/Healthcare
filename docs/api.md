@@ -6,6 +6,9 @@ JSON requests and responses. IDs are positive integers. Write requests require `
 | --- | --- | --- |
 | GET | `/api/health` | Storage/scheduler mode, no patient details |
 | POST | `/api/login` | `{ "username":"admin", "password":"your-local-password" }` |
+| GET | `/api/recovery/config` | Enabled state, configured recovery phone, masked email, channels |
+| POST | `/api/recovery/request` | `{ "username":"admin", "channel":"sms", "contact":"registered contact" }`; generic response, configured recipient only |
+| POST | `/api/recovery/reset` | Same account fields plus `code` and `password`; valid one-time provider approval required |
 | GET | `/api/session` | Current user, CSRF token, mode |
 | POST | `/api/logout` | `{}`; clears browser cookie |
 | GET | `/api/state` | Newest 1,000 patients/doctors/appointments/bills, computed doctor availability |
@@ -16,6 +19,9 @@ JSON requests and responses. IDs are positive integers. Write requests require `
 | POST | `/api/patients/:id/history` | `{ "diagnosis":"Condition", "treatment":"Recorded care plan", "recovery_status":"recovering", "notes":"Progress" }`; standalone record, no appointment required |
 | GET | `/api/doctors` | Doctor collection, max 1,000 |
 | POST | `/api/doctors` | `{ "name":"Dr. Demo", "specialty":"General medicine" }` |
+| GET | `/api/staff` | Staff names and shift assignments |
+| POST | `/api/staff` | `{ "name":"Demo staff", "morning_shift":true, "night_shift":false }` |
+| PATCH | `/api/staff/:id` | Same fields; edits name and shift assignments, at least one shift required |
 | PATCH | `/api/doctors/:id/duty` | `{ "on_duty":false }`; blocked during an active visit |
 | POST | `/api/doctors/:id/next` | `{}`; atomic queue selection/start |
 | GET | `/api/appointments` | Appointment collection, max 1,000 |

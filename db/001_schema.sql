@@ -63,3 +63,20 @@ INSERT INTO patients(name,dob,phone) VALUES
  ('Rohan Demo','2001-02-18','0000000003'),('Anaya Demo','2016-11-22','0000000004');
 INSERT INTO appointments(patient_id,doctor_id,priority,reason) VALUES
  (1,1,0,'Routine follow-up'),(2,1,2,'Staff-assigned urgent review'),(3,2,0,'Scheduled follow-up');
+
+
+CREATE TABLE staff (
+ id INT PRIMARY KEY AUTO_INCREMENT,
+ name VARCHAR(100) NOT NULL,
+ morning_shift BOOLEAN NOT NULL DEFAULT FALSE,
+ night_shift BOOLEAN NOT NULL DEFAULT FALSE,
+ CHECK(morning_shift OR night_shift)
+) ENGINE=InnoDB;
+INSERT INTO staff(name,morning_shift,night_shift) VALUES
+ ('Harmeet',TRUE,FALSE),('Vansh',TRUE,TRUE),('Milli',TRUE,FALSE);
+CREATE TABLE admin_credentials (
+ username VARCHAR(100) PRIMARY KEY,
+ password_hash CHAR(128) NOT NULL,
+ salt VARCHAR(64) NOT NULL,
+ version VARCHAR(64) NOT NULL
+) ENGINE=InnoDB;

@@ -36,6 +36,8 @@ test('complete patient-to-appointment-to-record-to-billing lifecycle',async()=>{
  r=await request('/bills','POST',{appointment_id:visit,amount_paise:125050});assert.equal(r.status,201);const bill=r.body.id;
  assert.equal((await request(`/bills/${bill}/paid`,'POST',{})).body.status,'paid');
  assert.equal((await request(`/appointments/${visit}/complete`,'POST',{})).status,200);
+ assert.equal((await request('/state')).body.doctors.find(d=>d.id===1).available,true);
+ assert.equal((await request('/state')).body.appointments.find(a=>a.id===visit).status,'completed');
  assert.equal((await request(`/appointments/${visit}/complete`,'POST',{})).status,409);
  assert.equal((await request('/doctors/1/duty','PATCH',{on_duty:false})).status,200);
  assert.equal((await request('/doctors/1/next','POST',{})).status,409);
@@ -61,4 +63,13 @@ test('standalone disease, treatment and recovery history stays patient-specific'
  assert.equal((await request('/patients/4/history','POST',{...data,recovery_status:'invalid'})).status,400);
  assert.equal((await request('/patients/4/history','POST',{...data,treatment:''})).status,400);
  assert.equal((await request('/patients/999/history','POST',data)).status,404);
+});
+test('staff has requested shifts and names can be edited',async()=>{
+ const r=await request('/staff');assert.equal(r.status,200);
+ const vansh=r.body.items.find(s=>s.name==='Vansh');assert.equal(vansh.morning_shift,1);assert.equal(vansh.night_shift,1);
+ assert.equal(r.body.items.filter(s=>s.morning_shift).length,3);
+ const staff=r.body.items.find(s=>s.name==='Milli');
+ const edited=await request('/staff/'+staff.id,'PATCH',{name:'Milli Demo',morning_shift:false,night_shift:true});assert.equal(edited.body.name,'Milli Demo');assert.equal(edited.body.night_shift,1);
+ assert.equal((await request('/staff/'+staff.id,'PATCH',{name:'Milli',morning_shift:false,night_shift:false})).status,400);
+ assert.equal((await request('/staff/999','PATCH',{name:'Unknown',morning_shift:true,night_shift:false})).status,404);
 });
