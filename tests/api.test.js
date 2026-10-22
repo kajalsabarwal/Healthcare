@@ -53,3 +53,12 @@ test('register patient, queue, cancel and validation',async()=>{
  assert.equal((await request('/appointments','POST',{patient_id:r.body.id,doctor_id:999,priority:0,reason:'Demo'})).status,404);
  assert.equal((await request('/appointments','POST',{patient_id:r.body.id,doctor_id:3,priority:4,reason:'Demo'})).status,400);
 });
+test('standalone disease, treatment and recovery history stays patient-specific',async()=>{
+ const data={diagnosis:'Synthetic condition',treatment:'Demo care plan',recovery_status:'recovering',notes:'Demo progress note'};
+ const r=await request('/patients/4/history','POST',data);assert.equal(r.status,201);assert.equal(r.body.appointment_id,null);
+ const h=await request('/patients/4/history');assert.equal(h.body.records[0].treatment,data.treatment);assert.equal(h.body.records[0].recovery_status,'recovering');
+ assert.ok(!(await request('/patients/1/history')).body.records.some(x=>x.diagnosis===data.diagnosis));
+ assert.equal((await request('/patients/4/history','POST',{...data,recovery_status:'invalid'})).status,400);
+ assert.equal((await request('/patients/4/history','POST',{...data,treatment:''})).status,400);
+ assert.equal((await request('/patients/999/history','POST',data)).status,404);
+});

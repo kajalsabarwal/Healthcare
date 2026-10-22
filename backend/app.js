@@ -8,6 +8,11 @@ const integer=(v,min=1,max=2147483647)=>{if(!Number.isSafeInteger(v)||v<min||v>m
 const text=(v,max=100)=>{if(typeof v!=='string'||!v.trim()||v.trim().length>max)fail(400,`Text must contain 1–${max} characters`);return v.trim();};
 const exists=async(s,t,id)=>await s.get(t,id)||fail(404,'Resource not found');
 const now=()=>new Date();
+function recordData(b){
+  const recovery_status=b.recovery_status??'under_treatment';
+  if(!['under_treatment','recovering','recovered','follow_up'].includes(recovery_status))fail(400,'Invalid recovery status');
+  return {diagnosis:text(b.diagnosis,1000),treatment:b.treatment===undefined?'':text(b.treatment,2000),recovery_status,notes:text(b.notes,2000)};
+}
 function same(a,b){const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y);}
 async function body(req){let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>16384)fail(413,'Request too large');}try{return JSON.parse(raw||'{}');}catch{fail(400,'Invalid JSON');}}
 
@@ -97,11 +102,18 @@ export function createApp({store,mode='mysql',scheduler={mode:'java'},username,p
       }
       match=path.match(/^\/api\/patients\/(\d+)\/history$/);
       if(match&&method==='GET') {const id=integer(+match[1]);await exists(store,'patients',id);const before=integer(Number(url.searchParams.get('before')||2147483647)),limit=integer(Number(url.searchParams.get('limit')||20),1,100);const rows=await store.history(id,before,limit);return json(200,{records:rows,next_cursor:rows.length===limit?rows.at(-1).id:null});}
+      if(match&&method==='POST') {
+        const patient_id=integer(+match[1]);await exists(store,'patients',patient_id);
+        const b=await body(req),data=recordData(b);
+        if(!data.treatment)fail(400,'Enter the treatment or care plan');
+        const row=await store.insert('medical_records',{patient_id,appointment_id:null,...data});
+        broadcast();return json(201,row);
+      }
       if(['/api/records','/api/bills'].includes(path)&&method==='POST') {
         const b=await body(req),id=integer(b.appointment_id),a=await exists(store,'appointments',id),isBill=path==='/api/bills';
         const row=await store.withDoctor(a.doctor_id,async s=>{const visit=await exists(s,'appointments',id);if(!['in_progress','completed'].includes(visit.status))fail(409,'Start the visit first');
           const t=isBill?'bills':'medical_records';if((await s.all(t)).some(x=>x.appointment_id===id))fail(409,'Entry already exists for this visit');
-          const data=isBill?{amount_paise:integer(b.amount_paise,1,100000000),status:'unpaid'}:{diagnosis:text(b.diagnosis,1000),notes:text(b.notes,2000)};
+          const data=isBill?{amount_paise:integer(b.amount_paise,1,100000000),status:'unpaid'}:recordData(b);
           return s.insert(t,{appointment_id:id,patient_id:visit.patient_id,...data});
         });broadcast();return json(201,row);
       }

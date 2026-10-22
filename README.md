@@ -9,6 +9,7 @@ This is a separate project from the Expense and Budget Analysis repository. All 
 ## Features
 
 - Patient registration, searchable directory, and paginated medical history.
+- Add medical records directly from Patients: disease/diagnosis, treatment or care plan, recovery status, and clinical notes. Historical entries do not require an appointment. Recovery is recorded by staff, never inferred by the app.
 - Doctor registration, duty changes, and live availability updates using Server-Sent Events (SSE).
 - Appointment queues: `Queue`/`ArrayDeque` for normal visits and `PriorityQueue` for staff-assigned emergency visits.
 - Deterministic ordering: emergency priority 3 before 2 before 1, then normal visits; equal priority uses arrival time and appointment ID.
@@ -41,6 +42,8 @@ docker compose down
 `docker compose down` preserves data. Schema changes require a migration against existing volumes; the init SQL runs only on a new database. Existing installations with the original demo doctor names can apply `db/002_rename_doctors.sql` using a MySQL client. It updates only the three matching demo records and preserves appointments and other data. Do not remove a data volume unless its contents are disposable.
 
 ## Quick preview without Java or MySQL
+
+For an existing MySQL installation, apply `db/003_patient_records.sql` once before using this version. New databases already include the new fields. The migration retains existing diagnoses and notes, adds treatment/recovery fields, and allows standalone records without an appointment. The Docker init script does not migrate existing volumes automatically.
 
 Node.js 22+ is enough for the dependency-free local demo:
 

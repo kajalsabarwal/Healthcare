@@ -13,3 +13,7 @@ assert.equal((await call('/patients/2/history')).body.records[0].diagnosis,'Inte
 assert.equal((await call('/bills',{appointment_id:next.body.id,amount_paise:50000})).status,201);
 assert.equal((await call(`/appointments/${next.body.id}/complete`,{})).status,200);
 console.log('Java + Node.js + MySQL integration checks passed');
+const record={diagnosis:'Synthetic historical condition',treatment:'Demo care plan',recovery_status:'recovered',notes:'Synthetic recovery note'};
+assert.equal((await call('/patients/4/history',record)).status,201);
+const history=await call('/patients/4/history');assert.equal(history.body.records[0].treatment,record.treatment);assert.equal(history.body.records[0].recovery_status,'recovered');assert.equal(history.body.records[0].appointment_id,null);
+console.log('Standalone disease and treatment records persist in MySQL');

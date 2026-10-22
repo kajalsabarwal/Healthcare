@@ -32,9 +32,11 @@ CREATE TABLE appointments (
 ) ENGINE=InnoDB;
 CREATE TABLE medical_records (
  id INT PRIMARY KEY AUTO_INCREMENT,
- appointment_id INT NOT NULL,
+ appointment_id INT NULL,
  patient_id INT NOT NULL,
  diagnosis VARCHAR(1000) NOT NULL,
+ treatment VARCHAR(2000) NOT NULL DEFAULT '',
+ recovery_status ENUM('under_treatment','recovering','recovered','follow_up') NOT NULL DEFAULT 'under_treatment',
  notes VARCHAR(2000) NOT NULL,
  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
  UNIQUE KEY one_record_per_visit(appointment_id),

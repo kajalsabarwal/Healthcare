@@ -2,7 +2,7 @@ const tables = new Set(['patients','doctors','appointments','medical_records','b
 const fields = {
   patients:['name','dob','phone'],doctors:['name','specialty','on_duty'],
   appointments:['patient_id','doctor_id','priority','reason','status','completed_at'],
-  medical_records:['appointment_id','patient_id','diagnosis','notes'],
+  medical_records:['appointment_id','patient_id','diagnosis','treatment','recovery_status','notes'],
   bills:['appointment_id','patient_id','amount_paise','status','paid_at']
 };
 function table(t) {if(!tables.has(t))throw Error('Unknown table');return t;}
@@ -22,7 +22,7 @@ export class MysqlStore {
   async waiting(doctor) {const [rows]=await this.connection.execute("SELECT * FROM appointments WHERE doctor_id=? AND status='waiting' ORDER BY created_at,id LIMIT 1001",[doctor]);return rows;}
   async active(doctor) {const [rows]=await this.connection.execute("SELECT * FROM appointments WHERE active_doctor=?",[doctor]);return rows[0];}
   async history(patient,before,limit) {
-    const [rows]=await this.connection.execute(`SELECT id,appointment_id,patient_id,diagnosis,notes,created_at FROM medical_records WHERE patient_id=? AND id<? ORDER BY id DESC LIMIT ${limit}`,[patient,before]);return rows;
+    const [rows]=await this.connection.execute(`SELECT id,appointment_id,patient_id,diagnosis,treatment,recovery_status,notes,created_at FROM medical_records WHERE patient_id=? AND id<? ORDER BY id DESC LIMIT ${limit}`,[patient,before]);return rows;
   }
   async withDoctor(id,fn) {
     const c=await this.pool.getConnection();try {

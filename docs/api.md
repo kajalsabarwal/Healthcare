@@ -13,6 +13,7 @@ JSON requests and responses. IDs are positive integers. Write requests require `
 | GET | `/api/patients` | Patient collection, max 1,000 |
 | POST | `/api/patients` | `{ "name":"Demo", "dob":"2000-01-01", "phone":"0000000000" }` |
 | GET | `/api/patients/:id/history?before=123&limit=20` | Descending record-ID cursor, max page size 100 |
+| POST | `/api/patients/:id/history` | `{ "diagnosis":"Condition", "treatment":"Recorded care plan", "recovery_status":"recovering", "notes":"Progress" }`; standalone record, no appointment required |
 | GET | `/api/doctors` | Doctor collection, max 1,000 |
 | POST | `/api/doctors` | `{ "name":"Dr. Demo", "specialty":"General medicine" }` |
 | PATCH | `/api/doctors/:id/duty` | `{ "on_duty":false }`; blocked during an active visit |
@@ -28,6 +29,6 @@ JSON requests and responses. IDs are positive integers. Write requests require `
 
 Responses use 201 for creation, 200 for reads/transitions, 400 for invalid input, 401 for missing/invalid login, 403 for CSRF/origin rejection, 404 for missing resources, 409 for workflow conflicts, 413 for oversized requests, 415 for wrong content type, 429 for login throttling, and 503 for unavailable/invalid Java responses. Errors have `{ "error":"message" }`.
 
-Patients and doctors are registered rather than deleted, preserving referenced visit data. Visit records and bills are append-only with one of each per appointment. No arbitrary appointment status edits are exposed.
+Patients and doctors are registered rather than deleted, preserving referenced visit data. Visit records and bills are append-only with one of each per appointment. Patients can also have multiple standalone historical records. Both record endpoints accept treatment and recovery_status (`under_treatment`, `recovering`, `recovered`, or `follow_up`). Treatment is required for standalone entries; older appointment clients may omit it. No arbitrary appointment status edits are exposed.
 
 The internal Java service exposes `GET /health`, `POST /next`, and `POST /availability`. It uses tab-delimited primitive snapshots, not public patient APIs, and is not published to the host. Keep it on the private service network.
