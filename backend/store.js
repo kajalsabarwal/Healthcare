@@ -1,9 +1,11 @@
-const tables = new Set(['patients','doctors','appointments','medical_records','bills','staff']);
+const tables = new Set(['patients','doctors','appointments','medical_records','bills','staff','discharge_summaries','attachments']);
 const fields = {
   patients:['name','dob','phone'],doctors:['name','specialty','on_duty'],staff:['name','morning_shift','night_shift'],
   appointments:['patient_id','doctor_id','priority','reason','status','completed_at'],
   medical_records:['appointment_id','patient_id','diagnosis','treatment','recovery_status','notes'],
-  bills:['appointment_id','patient_id','amount_paise','status','paid_at']
+  bills:['appointment_id','patient_id','amount_paise','description','status','paid_at'],
+  discharge_summaries:['patient_id','previous_id','diagnosis','treatment','discharge_advice','follow_up','discharge_date'],
+  attachments:['patient_id','summary_id','filename','mime','content_base64']
 };
 function table(t) {if(!tables.has(t))throw Error('Unknown table');return t;}
 function entries(t,data) {return Object.entries(data).filter(([k])=>fields[t].includes(k));}
@@ -26,6 +28,9 @@ export class MysqlStore {
   async history(patient,before,limit) {
     const [rows]=await this.connection.execute(`SELECT id,appointment_id,patient_id,diagnosis,treatment,recovery_status,notes,created_at FROM medical_records WHERE patient_id=? AND id<? ORDER BY id DESC LIMIT ${limit}`,[patient,before]);return rows;
   }
+  async dischargeHistory(patient,before,limit){const [rows]=await this.connection.execute(`SELECT * FROM discharge_summaries WHERE patient_id=? AND id<? ORDER BY id DESC LIMIT ${limit}`,[patient,before]);return rows;}
+  async dischargeSuccessor(id){const [rows]=await this.connection.execute('SELECT id FROM discharge_summaries WHERE previous_id=?',[id]);return rows[0];}
+  async attachmentHistory(patient,before,limit){const [rows]=await this.connection.execute(`SELECT id,patient_id,summary_id,filename,mime,created_at FROM attachments WHERE patient_id=? AND id<? ORDER BY id DESC LIMIT ${limit}`,[patient,before]);return rows;}
   async withDoctor(id,fn) {
     const c=await this.pool.getConnection();try {
       await c.beginTransaction();
@@ -39,7 +44,7 @@ export class MysqlStore {
 export class MemoryStore {
   constructor() {
     this.data={patients:[{id:1,name:'Aarav Demo',dob:'1997-05-14',phone:'0000000001'},{id:2,name:'Isha Demo',dob:'1985-09-03',phone:'0000000002'},{id:3,name:'Rohan Demo',dob:'2001-02-18',phone:'0000000003'},{id:4,name:'Anaya Demo',dob:'2016-11-22',phone:'0000000004'}],
-      doctors:[{id:1,name:'Dr Komal',specialty:'General medicine',on_duty:1},{id:2,name:'Dr Gurdeep Singh',specialty:'Cardiology',on_duty:1},{id:3,name:'Dr Balbir',specialty:'Pediatrics',on_duty:1}],staff:[{id:1,name:'Harmeet',morning_shift:1,night_shift:0},{id:2,name:'Vansh',morning_shift:1,night_shift:1},{id:3,name:'Milli',morning_shift:1,night_shift:0}],appointments:[],medical_records:[],bills:[]};
+      doctors:[{id:1,name:'Dr Komal',specialty:'General medicine',on_duty:1},{id:2,name:'Dr Gurdeep Singh',specialty:'Cardiology',on_duty:1},{id:3,name:'Dr Balbir',specialty:'Pediatrics',on_duty:1}],staff:[{id:1,name:'Harmeet',morning_shift:1,night_shift:0},{id:2,name:'Vansh',morning_shift:1,night_shift:1},{id:3,name:'Milli',morning_shift:1,night_shift:0}],appointments:[],medical_records:[],bills:[],discharge_summaries:[],attachments:[]};
     this.credentials=new Map();
     this.tail=Promise.resolve();
     this.insert('appointments',{patient_id:1,doctor_id:1,priority:0,reason:'Routine follow-up',status:'waiting'});
@@ -50,11 +55,14 @@ export class MemoryStore {
   async credential(username){return structuredClone(this.credentials.get(username));}
   async saveCredential(username,data){this.credentials.set(username,structuredClone(data));}
   async get(t,id){return structuredClone(this.data[table(t)].find(x=>x.id===id));}
-  async insert(t,data){const rows=this.data[table(t)];const row={id:Math.max(0,...rows.map(x=>x.id))+1,created_at:new Date().toISOString(),...data};rows.push(row);return structuredClone(row);}
+  async insert(t,data){const rows=this.data[table(t)];if(t==='discharge_summaries'&&data.previous_id&&rows.some(r=>r.previous_id===data.previous_id)){const e=Error('Summary already revised');e.code='ER_DUP_ENTRY';throw e;}const row={id:Math.max(0,...rows.map(x=>x.id))+1,created_at:new Date().toISOString(),...data};rows.push(row);return structuredClone(row);}
   async patch(t,id,data){const row=this.data[table(t)].find(x=>x.id===id);Object.assign(row,data);return structuredClone(row);}
   async waiting(id){return (await this.all('appointments')).filter(x=>x.doctor_id===id&&x.status==='waiting').sort((a,b)=>a.id-b.id);}
   async active(id){return (await this.all('appointments')).find(x=>x.doctor_id===id&&x.status==='in_progress');}
-  async history(id,before,limit){return (await this.all('medical_records')).filter(x=>x.patient_id===id&&x.id<before).slice(0,limit);}
+  async history(id,before,limit){return structuredClone(this.data.medical_records.filter(x=>x.patient_id===id&&x.id<before).sort((a,b)=>b.id-a.id).slice(0,limit));}
+  async dischargeHistory(id,before,limit){return structuredClone(this.data.discharge_summaries.filter(x=>x.patient_id===id&&x.id<before).sort((a,b)=>b.id-a.id).slice(0,limit));}
+  async dischargeSuccessor(id){return (await this.all('discharge_summaries')).find(x=>x.previous_id===id);}
+  async attachmentHistory(patient,before,limit){return structuredClone(this.data.attachments.filter(x=>x.patient_id===patient&&x.id<before).sort((a,b)=>b.id-a.id).slice(0,limit).map(({content_base64,...metadata})=>metadata));}
   async withDoctor(id,fn){
     const previous=this.tail;let release;this.tail=new Promise(r=>release=r);await previous;
     const snapshot=structuredClone(this.data);

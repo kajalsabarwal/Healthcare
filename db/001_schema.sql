@@ -49,6 +49,7 @@ CREATE TABLE bills (
  appointment_id INT NOT NULL UNIQUE,
  patient_id INT NOT NULL,
  amount_paise INT NOT NULL CHECK(amount_paise>0),
+ description VARCHAR(300) NOT NULL DEFAULT 'Consultation fee',
  status ENUM('unpaid','paid') NOT NULL DEFAULT 'unpaid',
  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
  paid_at TIMESTAMP(3) NULL,
@@ -79,4 +80,32 @@ CREATE TABLE admin_credentials (
  password_hash CHAR(128) NOT NULL,
  salt VARCHAR(64) NOT NULL,
  version VARCHAR(64) NOT NULL
+) ENGINE=InnoDB;
+CREATE TABLE discharge_summaries (
+ id INT PRIMARY KEY AUTO_INCREMENT,
+ patient_id INT NOT NULL,
+ previous_id INT NULL UNIQUE,
+ diagnosis VARCHAR(1000) NOT NULL,
+ treatment VARCHAR(2000) NOT NULL,
+ discharge_advice VARCHAR(2000) NOT NULL,
+ follow_up VARCHAR(1000) NOT NULL,
+ discharge_date DATE NOT NULL,
+ created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ KEY discharge_history(patient_id,id DESC),
+ FOREIGN KEY(patient_id) REFERENCES patients(id),
+ FOREIGN KEY(previous_id) REFERENCES discharge_summaries(id)
+) ENGINE=InnoDB;
+
+
+CREATE TABLE attachments (
+ id INT PRIMARY KEY AUTO_INCREMENT,
+ patient_id INT NOT NULL,
+ summary_id INT NULL,
+ filename VARCHAR(120) NOT NULL,
+ mime VARCHAR(30) NOT NULL,
+ content_base64 MEDIUMTEXT NOT NULL,
+ created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ KEY attachment_history(patient_id,id DESC),
+ FOREIGN KEY(patient_id) REFERENCES patients(id),
+ FOREIGN KEY(summary_id) REFERENCES discharge_summaries(id)
 ) ENGINE=InnoDB;

@@ -33,7 +33,7 @@ test('complete patient-to-appointment-to-record-to-billing lifecycle',async()=>{
  const cursor=r.body.next_cursor;assert.equal((await request(`/patients/2/history?before=${cursor}`)).body.records.length,0);
  assert.equal((await request('/patients/2/history?limit=999')).status,400);
  assert.equal((await request('/bills','POST',{appointment_id:visit,amount_paise:0})).status,400);
- r=await request('/bills','POST',{appointment_id:visit,amount_paise:125050});assert.equal(r.status,201);const bill=r.body.id;
+ r=await request('/bills','POST',{appointment_id:visit,amount_paise:125050,description:'Demo consultation'});assert.equal(r.status,201);assert.equal(r.body.description,'Demo consultation');const bill=r.body.id;
  assert.equal((await request(`/bills/${bill}/paid`,'POST',{})).body.status,'paid');
  assert.equal((await request(`/appointments/${visit}/complete`,'POST',{})).status,200);
  assert.equal((await request('/state')).body.doctors.find(d=>d.id===1).available,true);
@@ -72,4 +72,26 @@ test('staff has requested shifts and names can be edited',async()=>{
  const edited=await request('/staff/'+staff.id,'PATCH',{name:'Milli Demo',morning_shift:false,night_shift:true});assert.equal(edited.body.name,'Milli Demo');assert.equal(edited.body.night_shift,1);
  assert.equal((await request('/staff/'+staff.id,'PATCH',{name:'Milli',morning_shift:false,night_shift:false})).status,400);
  assert.equal((await request('/staff/999','PATCH',{name:'Unknown',morning_shift:true,night_shift:false})).status,404);
+});
+test('discharge summary updates preserve history and reject stale or cross-patient edits',async()=>{
+ const summary={diagnosis:'Synthetic condition',treatment:'Demo treatment',discharge_advice:'Demo discharge advice',follow_up:'Demo follow-up',discharge_date:'2025-01-10'};
+ const first=await request('/patients/4/discharge-summaries','POST',summary);assert.equal(first.status,201);
+ const update=await request('/patients/4/discharge-summaries','POST',{...summary,previous_id:first.body.id,follow_up:'Updated follow-up'});assert.equal(update.status,201);
+ const history=await request('/patients/4/discharge-summaries');assert.equal(history.body.summaries.length,2);assert.equal(history.body.summaries[0].previous_id,first.body.id);assert.equal(history.body.summaries[1].follow_up,'Demo follow-up');
+ assert.equal((await request('/patients/4/discharge-summaries','POST',{...summary,previous_id:first.body.id})).status,409);
+ assert.equal((await request('/patients/1/discharge-summaries','POST',{...summary,previous_id:update.body.id})).status,400);
+ assert.equal((await request('/patients/1/discharge-summaries')).body.summaries.length,0);
+ assert.equal((await request('/patients/4/discharge-summaries','POST',{...summary,discharge_date:'2025-02-31'})).status,400);
+ const revisions=await Promise.all([request('/patients/4/discharge-summaries','POST',{...summary,previous_id:update.body.id}),request('/patients/4/discharge-summaries','POST',{...summary,previous_id:update.body.id})]);assert.deepEqual(revisions.map(r=>r.status).sort(),[201,409]);
+});
+test('report images validate content and link only to the correct patient summary',async()=>{
+ const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=';
+ const summaries=await request('/patients/4/discharge-summaries');const id=summaries.body.summaries[0].id;
+ const upload=await request('/patients/4/attachments','POST',{filename:'synthetic-report.png',summary_id:id,content_base64:png});assert.equal(upload.status,201);assert.equal(upload.body.mime,'image/png');assert.ok(!('content_base64' in upload.body));
+ const listing=await request('/patients/4/attachments');assert.equal(listing.body.attachments[0].summary_id,id);assert.ok(!('content_base64' in listing.body.attachments[0]));
+ const image=await fetch(base+'/api/attachments/'+upload.body.id+'/image',{headers:{Cookie:cookie}});assert.equal(image.status,200);assert.equal(image.headers.get('content-type'),'image/png');assert.deepEqual(Buffer.from(await image.arrayBuffer()),Buffer.from(png,'base64'));
+ assert.equal((await fetch(base+'/api/attachments/'+upload.body.id+'/image')).status,401);
+ assert.equal((await request('/patients/1/attachments','POST',{filename:'wrong-patient.png',summary_id:id,content_base64:png})).status,400);
+ assert.equal((await request('/patients/4/attachments','POST',{filename:'unsafe.svg',content_base64:Buffer.from('<svg></svg>').toString('base64')})).status,400);
+ assert.equal((await request('/patients/4/attachments','POST',{filename:'large.png',content_base64:Buffer.alloc(2097153).toString('base64')})).status,413);
 });

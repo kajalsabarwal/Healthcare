@@ -3,3 +3,5 @@
 .brand-name{font-size:17px;line-height:1.2;letter-spacing:-.4px}.brand-mark{font-size:14px;flex-shrink:0}.brand-plus{display:none}
 
 .login-card .recovery-link{background:none;color:#285c48;text-align:center;padding:10px;margin-top:14px}.login-card #recovery-message{font-size:12px;line-height:1.6;color:#617360}#recovery-panel{padding:35px 0}
+
+#discharge-content{padding:0 25px}#attachments-content{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;padding:0 25px 25px}.report-image{border:1px solid #e4eae6;border-radius:8px;padding:14px}.report-image img{width:100%;max-height:220px;object-fit:contain}.report-image p,.report-image small,.bill-detail p{font-size:12px;line-height:1.6;overflow-wrap:anywhere}.report-image a{color:#285c48}#more-discharge,#more-attachments{margin:0 25px 25px}.record .row-actions{margin-top:15px}.bill-detail strong{color:#285c48}

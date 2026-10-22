@@ -21,3 +21,9 @@ No load test, clinical validation, security audit, or measured query-performance
 Nine local test groups pass, including staff name/shift editing and mocked SMS/email recovery. The recovery suite checks wrong/expired approval rejection, short-password rejection, successful reset, one-time replay rejection, old-password rejection, and earlier-session invalidation. The adapter tests inspect channel selection without contacting a delivery provider. Browser checks confirmed the Forgot password screen, disabled delivery when credentials are missing, configured private contact display, staff shift listing, and prefilled name/shift editor.
 
 Actual SMS/email delivery is not configured or tested. No personal recovery contact, private demo data, or provider credentials are included in the repository. The MySQL integration suite now exercises staff seed shifts and staff-name edits as well as patient records.
+
+## Billing, discharge summaries, and images
+
+Eleven local test groups pass. Tests cover bill-description persistence, discharge revision history, patient isolation, invalid dates, stale/concurrent revision rejection, valid image upload and byte retrieval, wrong-patient summary links, unsupported image rejection, image size limits, and authentication on image reads. The MySQL integration suite also creates/revises a discharge summary and stores/reads image metadata. Only synthetic image fixtures are committed; user-uploaded data is kept outside source control.
+
+An isolated browser demo also verified Billing → Add bill, saving a described INR bill, creating a discharge summary, updating it, preserving the earlier version, and opening the image-upload form. These UI checks used disposable synthetic data rather than altering the user's saved records.

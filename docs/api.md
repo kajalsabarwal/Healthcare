@@ -17,6 +17,11 @@ JSON requests and responses. IDs are positive integers. Write requests require `
 | POST | `/api/patients` | `{ "name":"Demo", "dob":"2000-01-01", "phone":"0000000000" }` |
 | GET | `/api/patients/:id/history?before=123&limit=20` | Descending record-ID cursor, max page size 100 |
 | POST | `/api/patients/:id/history` | `{ "diagnosis":"Condition", "treatment":"Recorded care plan", "recovery_status":"recovering", "notes":"Progress" }`; standalone record, no appointment required |
+| GET | `/api/patients/:id/discharge-summaries?before=123&limit=20` | Cursor-paginated discharge summary/revision history |
+| POST | `/api/patients/:id/discharge-summaries` | `diagnosis`, `treatment`, `discharge_advice`, `follow_up`, `discharge_date` (`YYYY-MM-DD`), optional `previous_id` for an update. Creates a revision rather than overwriting old records |
+| GET | `/api/patients/:id/attachments?before=123` | Image metadata only, cursor-paginated in pages of 20 |
+| POST | `/api/patients/:id/attachments` | `filename`, `content_base64`, optional `summary_id`; PNG/JPEG/WebP only, decoded size max 2 MB |
+| GET | `/api/attachments/:id/image` | Authenticated image preview/download with no-store headers |
 | GET | `/api/doctors` | Doctor collection, max 1,000 |
 | POST | `/api/doctors` | `{ "name":"Dr. Demo", "specialty":"General medicine" }` |
 | GET | `/api/staff` | Staff names and shift assignments |
@@ -34,6 +39,10 @@ JSON requests and responses. IDs are positive integers. Write requests require `
 | POST | `/api/bills/:id/paid` | `{}`; idempotent paid status, no funds transferred |
 
 Responses use 201 for creation, 200 for reads/transitions, 400 for invalid input, 401 for missing/invalid login, 403 for CSRF/origin rejection, 404 for missing resources, 409 for workflow conflicts, 413 for oversized requests, 415 for wrong content type, 429 for login throttling, and 503 for unavailable/invalid Java responses. Errors have `{ "error":"message" }`.
+
+Bill creation also accepts `description` (1–300 characters). It defaults to Consultation fee for older clients. A visit must be started or completed before billing, with at most one bill per visit.
+
+Discharge-summary revisions must reference the same patient's summary and can only extend the latest version of that chain. A unique successor constraint rejects simultaneous conflicting revisions. Multiple independent discharge episodes are supported. Uploaded images are private application data, not source assets. Image validation checks allowed file signatures and size; it is not a malware-scanning or metadata-removal service.
 
 Patients and doctors are registered rather than deleted, preserving referenced visit data. Visit records and bills are append-only with one of each per appointment. Patients can also have multiple standalone historical records. Both record endpoints accept treatment and recovery_status (`under_treatment`, `recovering`, `recovered`, or `follow_up`). Treatment is required for standalone entries; older appointment clients may omit it. No arbitrary appointment status edits are exposed.
 

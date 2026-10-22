@@ -15,7 +15,7 @@ function recordData(b){
   return {diagnosis:text(b.diagnosis,1000),treatment:b.treatment===undefined?'':text(b.treatment,2000),recovery_status,notes:text(b.notes,2000)};
 }
 function same(a,b){const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y);}
-async function body(req){let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>16384)fail(413,'Request too large');}try{return JSON.parse(raw||'{}');}catch{fail(400,'Invalid JSON');}}
+async function body(req,max=16384){let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>max)fail(413,'Request too large');}try{return JSON.parse(raw||'{}');}catch{fail(400,'Invalid JSON');}}
 
 export function createApp({store,mode='mysql',scheduler={mode:'java'},username,password,secret,recovery=createRecovery(),onMutation=()=>{}}) {
   if(!username||!password||!secret||secret.length<32)throw Error('Set administrator credentials and a session secret of at least 32 characters');
@@ -145,18 +145,59 @@ export function createApp({store,mode='mysql',scheduler={mode:'java'},username,p
         const row=await store.insert('medical_records',{patient_id,appointment_id:null,...data});
         broadcast();return json(201,row);
       }
+      match=path.match(/^\/api\/patients\/(\d+)\/discharge-summaries$/);
+      if(match&&method==='GET'){
+        const id=integer(+match[1]);await exists(store,'patients',id);
+        const before=integer(Number(url.searchParams.get('before')||2147483647)),limit=integer(Number(url.searchParams.get('limit')||20),1,100);
+        const rows=await store.dischargeHistory(id,before,limit);return json(200,{summaries:rows,next_cursor:rows.length===limit?rows.at(-1).id:null});
+      }
+      if(match&&method==='POST'){
+        const patient_id=integer(+match[1]);await exists(store,'patients',patient_id);
+        const b=await body(req),discharge_date=text(b.discharge_date,10);
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(discharge_date)||!Number.isFinite(Date.parse(discharge_date))||new Date(discharge_date).toISOString().slice(0,10)!==discharge_date||discharge_date>new Date().toISOString().slice(0,10)||discharge_date<'1900-01-01')fail(400,'Enter a valid discharge date that is not in the future');
+        const previous_id=b.previous_id==null?null:integer(b.previous_id);
+        if(previous_id){const previous=await exists(store,'discharge_summaries',previous_id);if(previous.patient_id!==patient_id)fail(400,'Summary belongs to a different patient');if(await store.dischargeSuccessor(previous_id))fail(409,'This summary has a newer version. Reload its history before updating.');}
+        const data={patient_id,previous_id,diagnosis:text(b.diagnosis,1000),treatment:text(b.treatment,2000),discharge_advice:text(b.discharge_advice,2000),follow_up:text(b.follow_up,1000),discharge_date};
+        const row=await store.insert('discharge_summaries',data);broadcast();return json(201,row);
+      }
+      match=path.match(/^\/api\/patients\/(\d+)\/attachments$/);
+      if(match&&method==='GET'){
+        const id=integer(+match[1]);await exists(store,'patients',id);
+        const before=integer(Number(url.searchParams.get('before')||2147483647));const rows=await store.attachmentHistory(id,before,20);
+        return json(200,{attachments:rows,next_cursor:rows.length===20?rows.at(-1).id:null});
+      }
+      if(match&&method==='POST'){
+        const patient_id=integer(+match[1]);await exists(store,'patients',patient_id);
+        const b=await body(req,2900000),filename=text(b.filename,120).replace(/[^a-zA-Z0-9._ -]/g,'_');
+        if(typeof b.content_base64!=='string'||!b.content_base64.length||!/^[A-Za-z0-9+/]*={0,2}$/.test(b.content_base64))fail(400,'Invalid image data');
+        const image=Buffer.from(b.content_base64,'base64');if(image.length>2*1024*1024)fail(413,'Image must be at most 2 MB');
+        let mime;
+        if(image.length>=24&&image.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))mime='image/png';
+        else if(image.length>=4&&image[0]===255&&image[1]===216&&image[2]===255)mime='image/jpeg';
+        else if(image.length>=16&&image.toString('ascii',0,4)==='RIFF'&&image.toString('ascii',8,12)==='WEBP')mime='image/webp';
+        else fail(400,'Upload a PNG, JPEG, or WebP image');
+        const summary_id=b.summary_id==null?null:integer(b.summary_id);
+        if(summary_id){const summary=await exists(store,'discharge_summaries',summary_id);if(summary.patient_id!==patient_id)fail(400,'Summary belongs to a different patient');}
+        const row=await store.insert('attachments',{patient_id,summary_id,filename,mime,content_base64:image.toString('base64')});
+        const {content_base64,...metadata}=row;broadcast();return json(201,metadata);
+      }
+      match=path.match(/^\/api\/attachments\/(\d+)\/image$/);
+      if(match&&method==='GET'){
+        const image=await exists(store,'attachments',integer(+match[1]));
+        res.writeHead(200,{'Content-Type':image.mime,'Content-Disposition':`inline; filename="${image.filename.replace(/[^a-zA-Z0-9._ -]/g,'_')}"`});return res.end(Buffer.from(image.content_base64,'base64'));
+      }
       if(['/api/records','/api/bills'].includes(path)&&method==='POST') {
         const b=await body(req),id=integer(b.appointment_id),a=await exists(store,'appointments',id),isBill=path==='/api/bills';
         const row=await store.withDoctor(a.doctor_id,async s=>{const visit=await exists(s,'appointments',id);if(!['in_progress','completed'].includes(visit.status))fail(409,'Start the visit first');
           const t=isBill?'bills':'medical_records';if((await s.all(t)).some(x=>x.appointment_id===id))fail(409,'Entry already exists for this visit');
-          const data=isBill?{amount_paise:integer(b.amount_paise,1,100000000),status:'unpaid'}:recordData(b);
+          const data=isBill?{amount_paise:integer(b.amount_paise,1,100000000),description:b.description===undefined?'Consultation fee':text(b.description,300),status:'unpaid'}:recordData(b);
           return s.insert(t,{appointment_id:id,patient_id:visit.patient_id,...data});
         });broadcast();return json(201,row);
       }
       match=path.match(/^\/api\/bills\/(\d+)\/paid$/);
       if(match&&method==='POST') {const id=integer(+match[1]),b=await exists(store,'bills',id),a=await exists(store,'appointments',b.appointment_id);const row=await store.withDoctor(a.doctor_id,async s=>s.patch('bills',id,{status:'paid',paid_at:now()}));broadcast();return json(200,row);}
       fail(404,'Route not found');
-    }catch(e){if(res.headersSent)return res.end();const status=e.status||(e.code==='ER_DUP_ENTRY'?409:500);if(status===500)console.error('Request failed:',e.code||e.message);json(status,{error:status===500?'Internal server error':e.code==='ER_DUP_ENTRY'?'Duplicate or conflicting appointment':e.message});}
+    }catch(e){if(res.headersSent)return res.end();const status=e.status||(e.code==='ER_DUP_ENTRY'?409:500);if(status===500)console.error('Request failed:',e.code||e.message);json(status,{error:status===500?'Internal server error':e.code==='ER_DUP_ENTRY'?'Duplicate or conflicting record':e.message});}
   });
   server.requestTimeout=10000;server.headersTimeout=10000;
   server.on('close',()=>{for(const res of clients)res.end();});

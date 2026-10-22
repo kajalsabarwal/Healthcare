@@ -9,6 +9,9 @@ This is a separate project from the Expense and Budget Analysis repository. All 
 ## Features
 
 - Patient registration, searchable directory, and paginated medical history.
+- Billing page **Add bill** and patient-level billing shortcuts. Select an unbilled started/completed visit, enter a description and INR amount, then view the saved bill or record its paid status.
+- Add and update patient discharge summaries, including diagnosis, treatment, discharge advice, follow-up, and date. Updates append a linked revision, preserving earlier records and rejecting stale updates.
+- Upload PNG, JPEG, or WebP medical-report/discharge images up to 2 MB. Private authenticated previews and downloads are linked to the correct patient and optional discharge-summary version. New uploads retain previous images.
 - Add medical records directly from Patients: disease/diagnosis, treatment or care plan, recovery status, and clinical notes. Historical entries do not require an appointment. Recovery is recorded by staff, never inferred by the app.
 - Doctor registration, duty changes, and live availability updates using Server-Sent Events (SSE).
 - In Care team, use **Finish visit & mark available** on a busy doctor's card to complete the active visit and enable calling the next patient. The card identifies the current patient and also links to visit record entry.
@@ -49,6 +52,8 @@ docker compose down
 For an existing MySQL installation, apply `db/003_patient_records.sql` once before using this version. New databases already include the new fields. The migration retains existing diagnoses and notes, adds treatment/recovery fields, and allows standalone records without an appointment. The Docker init script does not migrate existing volumes automatically.
 
 Then apply `db/004_staff_and_recovery.sql` once for staff and persistent reset credentials. Fresh databases include all current tables in `001_schema.sql`.
+
+Existing installations also need `db/005_discharge_and_billing.sql` and `db/006_report_images.sql` once, in that order, for bill descriptions, discharge revisions, and private image storage. Fresh installations already contain these tables. These migrations retain existing data; run each migration only once.
 
 Node.js 22+ is enough for the dependency-free local demo:
 
