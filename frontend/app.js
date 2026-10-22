@@ -5,7 +5,7 @@ const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const money=v=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(v/100);
 const patient=id=>state.patients.find(x=>x.id===id)?.name||`Patient #${id}`;
 const doctor=id=>state.doctors.find(x=>x.id===id)?.name||`Doctor #${id}`;
-const initials=name=>name.replace('Dr. ','').split(' ').map(s=>s[0]).slice(0,2).join('');
+const initials=name=>name.replace(/^Dr\.?\s+/, '').split(' ').map(s=>s[0]).slice(0,2).join('');
 function notice(message,error=false){$('#notice').textContent=message;$('#notice').className=error?'error':'';$('#notice').hidden=false;}
 async function api(path,method='GET',data){const res=await fetch('/api'+path,{method,headers:method==='GET'?{}:{'Content-Type':'application/json','X-CSRF-Token':csrf},...(data?{body:JSON.stringify(data)}:{})});const body=await res.json();if(!res.ok){if(res.status===401&&path!=='/login')showLogin();throw Error(body.error||'Request failed');}return body;}
 function showLogin(){events?.close();$('#workspace').hidden=true;$('#login-screen').hidden=false;}

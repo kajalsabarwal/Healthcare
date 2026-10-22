@@ -55,7 +55,7 @@ CREATE TABLE bills (
  FOREIGN KEY(patient_id) REFERENCES patients(id)
 ) ENGINE=InnoDB;
 INSERT INTO doctors(name,specialty) VALUES
- ('Dr. Mira Shah','General medicine'),('Dr. Arjun Rao','Cardiology'),('Dr. Leena Das','Pediatrics');
+ ('Dr Komal','General medicine'),('Dr Gurdeep Singh','Cardiology'),('Dr Balbir','Pediatrics');
 INSERT INTO patients(name,dob,phone) VALUES
  ('Aarav Demo','1997-05-14','0000000001'),('Isha Demo','1985-09-03','0000000002'),
  ('Rohan Demo','2001-02-18','0000000003'),('Anaya Demo','2016-11-22','0000000004');

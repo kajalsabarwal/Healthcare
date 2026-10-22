@@ -1,10 +1,10 @@
-# CareDesk — Smart Hospital Management System
+# BB Healthcare Hospital — Smart Hospital Management System
 
 A full-stack hospital-workflow portfolio project built with **Java 21, Node.js, MySQL 8.4, and vanilla JavaScript**. It connects patient registration, doctor availability, queue dispatch, visit records, and billing in one responsive interface.
 
 This is a separate project from the Expense and Budget Analysis repository. All seed patients and records are fictional. Use synthetic data only. The application demonstrates hospital operations; it does not make clinical triage decisions or process payments.
 
-![CareDesk dashboard](docs/dashboard.png)
+![BB Healthcare Hospital dashboard](docs/dashboard.png)
 
 ## Features
 
@@ -38,7 +38,7 @@ docker compose logs -f app scheduler
 docker compose down
 ```
 
-`docker compose down` preserves data. Schema changes require a migration against existing volumes; the init SQL runs only on a new database. Do not remove a data volume unless its contents are disposable.
+`docker compose down` preserves data. Schema changes require a migration against existing volumes; the init SQL runs only on a new database. Existing installations with the original demo doctor names can apply `db/002_rename_doctors.sql` using a MySQL client. It updates only the three matching demo records and preserves appointments and other data. Do not remove a data volume unless its contents are disposable.
 
 ## Quick preview without Java or MySQL
 
@@ -52,7 +52,7 @@ Open **http://127.0.0.1:3000**. Login: **admin / demo-hospital**. This mode bind
 
 ## Try a complete workflow
 
-1. Open Appointments and call the next patient for Dr. Mira Shah. Isha's staff-marked P2 emergency visit is selected before Aarav's normal visit.
+1. Open Appointments and call the next patient for Dr Komal. Isha's staff-marked P2 emergency visit is selected before Aarav's normal visit.
 2. Add synthetic visit notes and create a bill for the active appointment.
 3. Complete the visit. The doctor becomes available and other connected tabs refresh.
 4. Open Patients, search for Isha, and view the saved visit record.

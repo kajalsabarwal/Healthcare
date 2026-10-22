@@ -37,7 +37,7 @@ export class MysqlStore {
 export class MemoryStore {
   constructor() {
     this.data={patients:[{id:1,name:'Aarav Demo',dob:'1997-05-14',phone:'0000000001'},{id:2,name:'Isha Demo',dob:'1985-09-03',phone:'0000000002'},{id:3,name:'Rohan Demo',dob:'2001-02-18',phone:'0000000003'},{id:4,name:'Anaya Demo',dob:'2016-11-22',phone:'0000000004'}],
-      doctors:[{id:1,name:'Dr. Mira Shah',specialty:'General medicine',on_duty:1},{id:2,name:'Dr. Arjun Rao',specialty:'Cardiology',on_duty:1},{id:3,name:'Dr. Leena Das',specialty:'Pediatrics',on_duty:1}],appointments:[],medical_records:[],bills:[]};
+      doctors:[{id:1,name:'Dr Komal',specialty:'General medicine',on_duty:1},{id:2,name:'Dr Gurdeep Singh',specialty:'Cardiology',on_duty:1},{id:3,name:'Dr Balbir',specialty:'Pediatrics',on_duty:1}],appointments:[],medical_records:[],bills:[]};
     this.tail=Promise.resolve();
     this.insert('appointments',{patient_id:1,doctor_id:1,priority:0,reason:'Routine follow-up',status:'waiting'});
     this.insert('appointments',{patient_id:2,doctor_id:1,priority:2,reason:'Staff-assigned urgent review',status:'waiting'});
